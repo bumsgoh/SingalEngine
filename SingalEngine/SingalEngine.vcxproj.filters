@@ -8,6 +8,9 @@
     <Filter Include="Main">
       <UniqueIdentifier>{282127e0-9cec-4879-a8a4-0fdcdb865cb5}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Main\Common">
+      <UniqueIdentifier>{fd5869ed-0f6e-45a4-8429-11f5c11e4dac}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -21,6 +24,12 @@
     </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobalFunctions.h">
+      <Filter>Main</Filter>
+    </ClInclude>
+    <ClInclude Include="d3dx12.h">
+      <Filter>Main\Common</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
