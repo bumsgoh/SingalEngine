@@ -1,9 +1,10 @@
 
 #include "framework.h"
 #include "SingalEngine.h"
+#include <DirectXColors.h>
 
 #define MAX_LOADSTRING 100
-
+using namespace DirectX;
 // 전역 변수:
 HINSTANCE hInst;                                // 현재 인스턴스입니다.
 WCHAR szTitle[MAX_LOADSTRING];                  // 제목 표시줄 텍스트입니다.
@@ -53,52 +54,62 @@ bool SingalEngine::Initialize() {
 
 
     SetForegroundWindow(m_windowHandle);
-
-    /*
-    if (!InitMainWindow())
-        return false;
-
-    if (!InitDirect3D())
-        return false;
-
-    if (!InitGUI())
-        return false;
-
-    if (!InitScene())
-        return false;
-
-    // PostEffect에 사용
-    m_screenSquare = make_shared<Model>(
-        m_device, m_context, vector{ GeometryGenerator::MakeSquare() });
-
-    // 환경 박스 초기화
-    MeshData skyboxMesh = GeometryGenerator::MakeBox(40.0f);
-    std::reverse(skyboxMesh.indices.begin(), skyboxMesh.indices.end());
-    m_skybox = make_shared<Model>(m_device, m_context, vector{ skyboxMesh });
-    m_skybox->m_name = "SkyBox";
-
-    // 콘솔창이 렌더링 창을 덮는 것을 방지
-    SetForegroundWindow(m_mainWindow);
-    */
     return true;
 }
 
 bool SingalEngine::InitDirect3D() {
 
+#if defined(DEBUG) || defined(_DEBUG) 
+    {
+        ComPtr<ID3D12Debug> debugController;
+        ThrowIfFailed(D3D12GetDebugInterface(IID_PPV_ARGS(&debugController)));
+        debugController->EnableDebugLayer();
+    }
+#endif
+
     ThrowIfFailed(CreateDXGIFactory1(IID_PPV_ARGS(&m_dxgiFactory)));
 
     // dx12 지원 device 생성
-     D3D12CreateDevice(
+    HRESULT hardwareResult = D3D12CreateDevice(
         nullptr,             // default adapter
         D3D_FEATURE_LEVEL_12_0,
         IID_PPV_ARGS(&m_device));
-    
     //GPU 명령 소진전 CPU 동작을 막기위한 펜스 추가
     ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE,
         IID_PPV_ARGS(&m_fence)));
 
+    m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+    //m_dsvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+
+    D3D12_FEATURE_DATA_MULTISAMPLE_QUALITY_LEVELS msQualityLevels;
+    msQualityLevels.Format = m_backBufferFormat;
+    msQualityLevels.SampleCount = 4;
+    msQualityLevels.Flags = D3D12_MULTISAMPLE_QUALITY_LEVELS_FLAG_NONE;
+    msQualityLevels.NumQualityLevels = 0;
+    ThrowIfFailed(m_device->CheckFeatureSupport(
+        D3D12_FEATURE_MULTISAMPLE_QUALITY_LEVELS,
+        &msQualityLevels,
+        sizeof(msQualityLevels)));
+    m_4xMsaaQuality = msQualityLevels.NumQualityLevels;
     InitCommandList();
+    InitSwapChain();
     InitDSHeaps();
+    DidResizeWindow();
+
+    ThrowIfFailed(m_commandList->Reset(m_commandListAllocator.Get(), nullptr));
+    
+    m_renderer->BuildDescriptorHeaps();
+    m_renderer->BuildConstantBuffers();
+    m_renderer->BuildRootSignature();
+    m_renderer->BuildShadersAndInputLayout();
+    m_renderer->Initialize(*m_scene);
+    m_renderer->BuildDefaultPSO();
+
+    ThrowIfFailed(m_commandList->Close());
+    ID3D12CommandList* cmdsLists[] = { m_commandList.Get() };
+    m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+    FlushCommandQueue();
     return true;
 }
 
@@ -107,18 +118,25 @@ void SingalEngine::InitCommandList() {
     D3D12_COMMAND_QUEUE_DESC queueDesc = {};
     queueDesc.Type = D3D12_COMMAND_LIST_TYPE_DIRECT;
     queueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+
     ThrowIfFailed(m_device->CreateCommandQueue(
         &queueDesc,
-        IID_PPV_ARGS(m_commandQueue.GetAddressOf())));
+        IID_PPV_ARGS(&m_commandQueue)));
+
     m_device->CreateCommandAllocator(
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         IID_PPV_ARGS(m_commandListAllocator.GetAddressOf()));
-    m_device->CreateCommandList(0,
+
+    m_device->CreateCommandList(
+        0,
         D3D12_COMMAND_LIST_TYPE_DIRECT,
         m_commandListAllocator.Get(),
         nullptr,
-        IID_PPV_ARGS(&m_commandList));
+        IID_PPV_ARGS(m_commandList.GetAddressOf()));
+        
 
+    m_renderer = std::make_shared<Renderer>(m_device, m_commandList);
+   
     m_commandList->Close();
 
 }
@@ -126,6 +144,7 @@ void SingalEngine::InitCommandList() {
 //RTV, DSV 등을 저장하고있는 heap 을 생성한다
 void SingalEngine::InitDSHeaps() {
 
+    //Render Target
     D3D12_DESCRIPTOR_HEAP_DESC rtvHeapDesc;
     rtvHeapDesc.NumDescriptors = 2;
     rtvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_RTV;
@@ -134,17 +153,14 @@ void SingalEngine::InitDSHeaps() {
     ThrowIfFailed(m_device->CreateDescriptorHeap(
         &rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
 
-
-    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
+    //Depth Stencil
+    /*D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
     dsvHeapDesc.NumDescriptors = 1;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     dsvHeapDesc.NodeMask = 0;
     ThrowIfFailed(m_device->CreateDescriptorHeap(
-        &dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
-
-    m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
-    m_dsvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
+        &dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));*/
 }
 
 //2개의 버퍼를 가지는 swap chain을 형성한다
@@ -157,16 +173,16 @@ void SingalEngine::InitSwapChain() {
     sd.BufferDesc.RefreshRate.Numerator = 60;
     sd.BufferDesc.RefreshRate.Denominator = 1;
     sd.BufferDesc.Format = m_backBufferFormat;
-    sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED;
-    sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED;
+    sd.BufferDesc.ScanlineOrdering = DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED; //TODO:: 어떤 기능인지?
+    sd.BufferDesc.Scaling = DXGI_MODE_SCALING_UNSPECIFIED; //TODO:: 어떤 기능인지?
     //TODO:: msaa 추후에 설정
-    //sd.SampleDesc.Count = m4xMsaaState ? 4 : 1;
-    //sd.SampleDesc.Quality = m4xMsaaState ? (m4xMsaaQuality - 1) : 0;
+    sd.SampleDesc.Count = m_4xMsaaState ? 4 : 1;
+    sd.SampleDesc.Quality = m_4xMsaaState ? (m_4xMsaaQuality - 1) : 0;
     sd.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
     sd.BufferCount = 2;
     sd.OutputWindow = m_windowHandle;
     sd.Windowed = true;
-    sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+    sd.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; //TODO:: 어떤 효과인지?
     sd.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
 
     // Note: Swap chain uses queue to perform flush.
@@ -185,27 +201,11 @@ int SingalEngine::Run() {
             DispatchMessage(&msg);
         }
         else {
-            ImGui_ImplDX12_NewFrame();
-            ImGui_ImplWin32_NewFrame();
-
-            ImGui::NewFrame();
-            ImGui::Begin("Scene Control");
-
-            //Draw, update
-
-            ImGui::Text("Average %.3f ms/frame (%.1f FPS)",
-                1000.0f / ImGui::GetIO().Framerate,
-                ImGui::GetIO().Framerate);
-
             UpdateGUI(); // 추가적으로 사용할 GUI
+            //float t = ImGui::GetIO().DeltaTime;
 
-            ImGui::End();
-            ImGui::Render();
-
-            UpdateEnginFrame(ImGui::GetIO().DeltaTime);
-
+            Update(0);
             Render();
-            SetViewport();
 
         }
     }
@@ -222,10 +222,8 @@ SingalEngine::SingalEngine()
 
 SingalEngine::~SingalEngine() {
     g_engine = nullptr;
-
-    ImGui_ImplDX12_Shutdown();
-    ImGui_ImplWin32_Shutdown();
-    ImGui::DestroyContext();
+    m_scene = nullptr;
+    m_renderer = nullptr;
 }
 
 float SingalEngine::GetScreenRatio() const {
@@ -255,33 +253,48 @@ void SingalEngine::SetViewport() {
     m_commandList->RSSetViewports(1, &m_screenViewport);
 }
 
+void SingalEngine::Update(float DeltaTime) {
+    ConstantBuffer constantBuffer;
+    //XMFLOAT4X4 worldMatrix = Identity4x4();
+    //XMStoreFloat4x4(&constantBuffer.worldMatrix, worldMatrix);
+    m_renderer->mObjectCB->CopyData(0, constantBuffer);
+}
+
 void SingalEngine::Render() {
     //command 들을 가르키고있는 allocator를 초기화한다
+    
     ThrowIfFailed(m_commandListAllocator->Reset());
-    ThrowIfFailed(m_commandList->Reset(m_commandListAllocator.Get(), nullptr));
+    ThrowIfFailed(m_commandList->Reset(m_commandListAllocator.Get(), m_renderer->m_pso.Get()));
 
-    D3D12_CPU_DESCRIPTOR_HANDLE dsView = DepthStencilView();
-    D3D12_CPU_DESCRIPTOR_HANDLE backbufferView = CurrentBackBufferView();
-    ID3D12Resource* curBackbuffer = CurrentBackBuffer();
-    D3D12_RESOURCE_BARRIER beforeBarrier = CD3DX12_RESOURCE_BARRIER::Transition(curBackbuffer,
-        D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
-    D3D12_RESOURCE_BARRIER afterBarrier = CD3DX12_RESOURCE_BARRIER::Transition(curBackbuffer,
-        D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
-    //resource: present > renderTarget
-    m_commandList->ResourceBarrier(1, &beforeBarrier);
     m_commandList->RSSetViewports(1, &m_screenViewport);
-    //m_commandList->RSSetScissorRects(1, &mScissorRect);
-    FLOAT color = 1.0f;
+    m_commandList->RSSetScissorRects(1, &m_scissorRect);
+    
+    m_commandList->ResourceBarrier(1,
+        &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(),
+            D3D12_RESOURCE_STATE_PRESENT,
+            D3D12_RESOURCE_STATE_RENDER_TARGET));
+            
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_currBackBufferIndex, m_rtvDescriptorSize);
+    m_commandList->ClearRenderTargetView(rtvHandle, Colors::White, 0, nullptr);
+    //m_commandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
 
-    m_commandList->ClearRenderTargetView(backbufferView, &color, 0, nullptr);
-    m_commandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+    m_commandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, nullptr);
+    //m_commandList->SetPipelineState(m_renderer->m_pso.Get());
+    m_renderer->Render(*m_scene);
 
-    m_commandList->OMSetRenderTargets(1, &backbufferView, true, &dsView);
-    //resource: renderTarget > present
-    m_commandList->ResourceBarrier(1, &afterBarrier);
-
+    m_commandList->ResourceBarrier(1,
+        &CD3DX12_RESOURCE_BARRIER::Transition(CurrentBackBuffer(), 
+            D3D12_RESOURCE_STATE_RENDER_TARGET,
+            D3D12_RESOURCE_STATE_PRESENT));
+    
     //명령 끝났다면 close
-    ThrowIfFailed(m_commandList->Close());
+
+    HRESULT hr;
+    hr = m_commandList->Close();
+    std::cout << hr;;
+    if (FAILED(hr)) {
+        throw std::runtime_error("Failed to close command list.");
+    }
 
     //close 해놓은 뒤에 명령 리스트 GPU로 전달
     ID3D12CommandList* cmdsLists[] = { m_commandList.Get() };
@@ -291,9 +304,100 @@ void SingalEngine::Render() {
     ThrowIfFailed(m_swapChain->Present(0, 0));
     //backbuffer 인덱스 바꿔줌
     m_currBackBufferIndex = (m_currBackBufferIndex + 1) % 2;
-
     FlushCommandQueue();
 }
+
+void SingalEngine::DidResizeWindow()
+{
+    assert(m_device);
+    assert(m_swapChain);
+    assert(m_commandList);
+
+    FlushCommandQueue();
+    ThrowIfFailed(m_commandList->Reset(m_commandListAllocator.Get(), nullptr));
+
+    // Release the previous resources we will be recreating.
+    for (int i = 0; i < SwapChainBufferCount; ++i)
+        m_swapChainBuffer[i].Reset();
+
+    //m_depthStencilBuffer.Reset();
+
+    // Resize the swap chain.
+    ThrowIfFailed(m_swapChain->ResizeBuffers(
+        SwapChainBufferCount,
+        m_screenWidth, m_screenHeight,
+        m_backBufferFormat,
+        DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH));
+
+    m_currBackBufferIndex = 0;
+
+    CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHeapHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart());
+    for (UINT i = 0; i < SwapChainBufferCount; i++)
+    {
+        ThrowIfFailed(m_swapChain->GetBuffer(i, IID_PPV_ARGS(&m_swapChainBuffer[i])));
+        m_device->CreateRenderTargetView(m_swapChainBuffer[i].Get(), nullptr, rtvHeapHandle);
+        rtvHeapHandle.Offset(1, m_rtvDescriptorSize);
+    }
+
+    /*D3D12_RESOURCE_DESC depthStencilDesc;
+    depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
+    depthStencilDesc.Alignment = 0;
+    depthStencilDesc.Width = m_screenWidth;
+    depthStencilDesc.Height = m_screenHeight;
+    depthStencilDesc.DepthOrArraySize = 1;
+    depthStencilDesc.MipLevels = 1;
+
+    depthStencilDesc.Format = DXGI_FORMAT_R24G8_TYPELESS;
+
+    depthStencilDesc.SampleDesc.Count = m_4xMsaaState ? 4 : 1;
+    depthStencilDesc.SampleDesc.Quality = m_4xMsaaState ? (m_4xMsaaQuality - 1) : 0;
+    depthStencilDesc.Layout = D3D12_TEXTURE_LAYOUT_UNKNOWN;
+    depthStencilDesc.Flags = D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL;
+
+    D3D12_CLEAR_VALUE optClear;
+    optClear.Format = m_depthStencilFormat;
+    optClear.DepthStencil.Depth = 1.0f;
+    optClear.DepthStencil.Stencil = 0;
+    ThrowIfFailed(m_device->CreateCommittedResource(
+        &CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+        D3D12_HEAP_FLAG_NONE,
+        &depthStencilDesc,
+        D3D12_RESOURCE_STATE_COMMON,
+        &optClear,
+        IID_PPV_ARGS(m_depthStencilBuffer.GetAddressOf())));
+        
+    // Create descriptor to mip level 0 of entire resource using the format of the resource.
+    D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+    dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+    dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+    dsvDesc.Format = m_depthStencilFormat;
+    dsvDesc.Texture2D.MipSlice = 0;
+    m_device->CreateDepthStencilView(m_depthStencilBuffer.Get(), &dsvDesc, DepthStencilView());
+
+    // Transition the resource from its initial state to be used as a depth buffer.
+    m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_depthStencilBuffer.Get(),
+        D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
+        */
+    // Execute the resize commands.
+    ThrowIfFailed(m_commandList->Close());
+    ID3D12CommandList* cmdsLists[] = { m_commandList.Get() };
+    m_commandQueue->ExecuteCommandLists(_countof(cmdsLists), cmdsLists);
+
+    // Wait until resize is complete.
+    FlushCommandQueue();
+
+    // Update the viewport transform to cover the client area.
+    m_screenViewport.TopLeftX = 0;
+    m_screenViewport.TopLeftY = 0;
+    m_screenViewport.Width = float(m_screenWidth);
+    m_screenViewport.Height = float(m_screenHeight);
+    m_screenViewport.MinDepth = 0.0f;
+    m_screenViewport.MaxDepth = 1.0f;
+
+    m_scissorRect = { 0, 0, m_screenWidth, m_screenHeight };
+
+}
+
 
 ID3D12Resource* SingalEngine::CurrentBackBuffer() const
 {
@@ -402,22 +506,7 @@ LRESULT SingalEngine::MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
             m_screenWidth = int(LOWORD(lParam));
             m_screenHeight = int(HIWORD(lParam));
 
-            // 윈도우가 Minimize 모드에서는 screenWidth/Height가 0
-            if (m_screenWidth && m_screenHeight) {
-
-                std::cout << "Resize SwapChain to " << m_screenWidth << " "
-                    << m_screenHeight << std::endl;
-
-                //m_backBufferRTV.Reset();
-                m_swapChain->ResizeBuffers(
-                    0,                    // 현재 개수 유지
-                    (UINT)LOWORD(lParam), // 해상도 변경
-                    (UINT)HIWORD(lParam),
-                    DXGI_FORMAT_UNKNOWN, // 현재 포맷 유지
-                    0);
-                //CreateBuffers();
-                SetViewport();
-            }
+          
         }
         break;
     case WM_SYSCOMMAND:

@@ -11,6 +11,18 @@
     <Filter Include="Main\Common">
       <UniqueIdentifier>{fd5869ed-0f6e-45a4-8429-11f5c11e4dac}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Main\Model">
+      <UniqueIdentifier>{fb50adee-ba33-4fd9-832e-22142d6cccb3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\Renderer">
+      <UniqueIdentifier>{f9ac7b51-2281-40c9-9086-943c722c761b}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\App">
+      <UniqueIdentifier>{441ba04e-33dd-4583-8a97-e1ba661d4fa1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Main\Shaders">
+      <UniqueIdentifier>{ad8edc8d-7013-428b-9140-b2f6960b6ce1}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -19,16 +31,43 @@
     <ClInclude Include="Resource.h">
       <Filter>Main</Filter>
     </ClInclude>
-    <ClInclude Include="SingalEngine.h">
-      <Filter>Main</Filter>
-    </ClInclude>
     <ClInclude Include="targetver.h">
       <Filter>Main</Filter>
     </ClInclude>
-    <ClInclude Include="GlobalFunctions.h">
-      <Filter>Main</Filter>
-    </ClInclude>
     <ClInclude Include="d3dx12.h">
+      <Filter>Main\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="Transform.h">
+      <Filter>Main\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Model.h">
+      <Filter>Main\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Cube.h">
+      <Filter>Main\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="ShaderCommon.h">
+      <Filter>Main\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="CommonMath.h">
+      <Filter>Main\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="GlobalFunctions.h">
+      <Filter>Main\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="SingalEngine.h">
+      <Filter>Main\App</Filter>
+    </ClInclude>
+    <ClInclude Include="Renderer.h">
+      <Filter>Main\Renderer</Filter>
+    </ClInclude>
+    <ClInclude Include="Scene.h">
+      <Filter>Main\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="Utils.h">
+      <Filter>Main\Common</Filter>
+    </ClInclude>
+    <ClInclude Include="UploadBuffer.h">
       <Filter>Main\Common</Filter>
     </ClInclude>
   </ItemGroup>
@@ -46,8 +85,34 @@
     </Image>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="SingalEngine.cpp">
-      <Filter>Main</Filter>
+    <ClCompile Include="Transform.cpp">
+      <Filter>Main\Model</Filter>
     </ClCompile>
+    <ClCompile Include="Model.cpp">
+      <Filter>Main\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Cube.cpp">
+      <Filter>Main\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="SingalEngine.cpp">
+      <Filter>Main\App</Filter>
+    </ClCompile>
+    <ClCompile Include="Renderer.cpp">
+      <Filter>Main\Renderer</Filter>
+    </ClCompile>
+    <ClCompile Include="Scene.cpp">
+      <Filter>Main\Model</Filter>
+    </ClCompile>
+    <ClCompile Include="Utils.cpp">
+      <Filter>Main\Common</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="DefaultVertexShader.hlsl">
+      <Filter>Main\Shaders</Filter>
+    </FxCompile>
+    <FxCompile Include="DefaultPixelShader.hlsl">
+      <Filter>Main\Shaders</Filter>
+    </FxCompile>
   </ItemGroup>
 </Project>

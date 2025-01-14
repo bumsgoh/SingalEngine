@@ -2,10 +2,11 @@
 
 #include "resource.h"
 #include "GlobalFunctions.h"
+#include "ShaderCommon.h"
+#include "CommonMath.h"
+#include "Scene.h"
+#include "Renderer.h"
 //vcpkg install imgui[core,dx12-binding,win32-binding]:x64-windows
-#include <imgui.h>
-#include <imgui_impl_dx12.h>
-#include <imgui_impl_win32.h>
 
 #include <D3Dcompiler.h>
 #include <dxgi1_4.h>
@@ -33,6 +34,7 @@ using std::wstring;
 class SingalEngine {
 
 public:
+	static const int SwapChainBufferCount = 2;
 	SingalEngine();
 	virtual ~SingalEngine();
 	virtual LRESULT MsgProc(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -52,7 +54,9 @@ public:
 
 	void UpdateEnginFrame(float dt);
 	void UpdateGUI();
+	void DidResizeWindow();
 
+	void Update(float deltaTime);
 	void Render();
 
 	//Buffer
@@ -91,4 +95,12 @@ public:
 	int m_currBackBufferIndex = 0;
 
 	D3D12_VIEWPORT m_screenViewport;
+	D3D12_RECT m_scissorRect;
+
+	bool m_4xMsaaState = false;    
+	UINT m_4xMsaaQuality = 0;
+
+private:
+	shared_ptr<Scene> m_scene = std::make_shared<Scene>();
+	shared_ptr<Renderer> m_renderer = nullptr;
 };
