@@ -7,6 +7,9 @@
 #include "d3dx12.h"
 #include <vector>
 #include <wrl/client.h> 
+#include "UploadBuffer.h"
+#include "ShaderCommon.h"
+#include <memory>
 
 using namespace Microsoft::WRL;
 class Model
@@ -16,13 +19,21 @@ public:
 
 	virtual bool Initialize(
 		ComPtr<ID3D12Device>& device,
-		ComPtr<ID3D12GraphicsCommandList>& cmdList);
+		ComPtr<ID3D12GraphicsCommandList>& cmdList,
+		UINT numberOfItems);
 
 	UINT VertexByteStride = 0;
 	UINT VertexBufferByteSize = 0;
 	DXGI_FORMAT IndexFormat = DXGI_FORMAT_R16_UINT;
 	UINT IndexBufferByteSize = 0;
 	UINT IndexCount = 0;
+	UINT NumberOfItems = 0;
+	UINT ConstantBufferIndex = -1;
+
+	ComPtr<ID3D12CommandAllocator> CommandListAlloc;
+	std::unique_ptr<UploadBuffer<ConstantBuffer>> CBuffer = nullptr;
+	UINT64 Fence = 0;
+
 public:
 	ComPtr<ID3DBlob> m_vertexBufferCPU = nullptr;
 	ComPtr<ID3DBlob> m_indexBufferCPU = nullptr;

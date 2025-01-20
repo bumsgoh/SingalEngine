@@ -25,8 +25,11 @@ Cube::Cube()
 
 bool Cube::Initialize(
 	ComPtr<ID3D12Device>& device,
-	ComPtr<ID3D12GraphicsCommandList>& cmdList)
+	ComPtr<ID3D12GraphicsCommandList>& cmdList, 
+	UINT numberOfItems)
 {
+	__super::Initialize(device, cmdList, numberOfItems);
+
 	m_vertexBufferGPU = CreateDefaultBuffer(
 		device.Get(),
 		cmdList.Get(),

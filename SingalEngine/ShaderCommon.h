@@ -11,5 +11,7 @@ struct Vertex
 
 struct ConstantBuffer
 {
-    XMFLOAT4X4 worldMatrix = Identity4x4();
+    XMFLOAT4X4 modelMatrix = Identity4x4();
+    XMFLOAT4X4 viewMatrix = Identity4x4();
+    XMFLOAT4X4 projectionMatrix = Identity4x4();
 };

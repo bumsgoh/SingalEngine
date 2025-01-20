@@ -21,6 +21,8 @@
 #include <windows.h>
 #include <wrl/client.h> 
 
+#include "Timer.h"
+
 // Link necessary d3d12 libraries.
 #pragma comment(lib,"d3dcompiler.lib")
 #pragma comment(lib, "D3D12.lib")
@@ -42,65 +44,22 @@ public:
 	bool Initialize();
 	bool InitWindow(HINSTANCE hInstance, int nCmdShow);
 
-
-	bool InitDirect3D();
-	void InitCommandList();
-	void InitDSHeaps();
-	void InitSwapChain();
 	int Run();
-
-	float GetScreenRatio() const;
-	void SetViewport();
 
 	void UpdateEnginFrame(float dt);
 	void UpdateGUI();
 	void DidResizeWindow();
 
 	void Update(float deltaTime);
-	void Render();
+	void Render(float DeltaTime);
 
-	//Buffer
-	ID3D12Resource* CurrentBackBuffer() const;
-	D3D12_CPU_DESCRIPTOR_HANDLE CurrentBackBufferView() const;
-	D3D12_CPU_DESCRIPTOR_HANDLE DepthStencilView() const;
-	void FlushCommandQueue();
 
 public:
-	int m_screenWidth;
-	int m_screenHeight;
 
 	HWND m_windowHandle = nullptr;
 
-	ComPtr<IDXGIFactory> m_dxgiFactory;
-	ComPtr<ID3D12Device> m_device;
-	ComPtr<ID3D12Fence> m_fence;
-	UINT64 m_currentFenceValue = 0;
-
-	ComPtr<ID3D12CommandQueue> m_commandQueue;
-	ComPtr<ID3D12CommandAllocator> m_commandListAllocator;
-	ComPtr<ID3D12GraphicsCommandList> m_commandList;
-	ComPtr<IDXGISwapChain> m_swapChain;
-
-	//heaps
-	ComPtr<ID3D12DescriptorHeap> m_rtvHeap;
-	ComPtr<ID3D12DescriptorHeap> m_dsvHeap;
-	UINT m_rtvDescriptorSize = 0;
-	UINT m_dsvDescriptorSize = 0;
-
-	//Render
-	DXGI_FORMAT m_backBufferFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
-	DXGI_FORMAT m_depthStencilFormat = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	ComPtr<ID3D12Resource> m_swapChainBuffer[2];
-	ComPtr<ID3D12Resource> m_depthStencilBuffer;
-	int m_currBackBufferIndex = 0;
-
-	D3D12_VIEWPORT m_screenViewport;
-	D3D12_RECT m_scissorRect;
-
-	bool m_4xMsaaState = false;    
-	UINT m_4xMsaaQuality = 0;
-
 private:
-	shared_ptr<Scene> m_scene = std::make_shared<Scene>();
+	Timer m_timer;
+	shared_ptr<Scene> m_scene = nullptr;
 	shared_ptr<Renderer> m_renderer = nullptr;
 };

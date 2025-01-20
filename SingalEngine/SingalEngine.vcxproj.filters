@@ -70,6 +70,9 @@
     <ClInclude Include="UploadBuffer.h">
       <Filter>Main\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Timer.h">
+      <Filter>Main\Common</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SingalEngine.rc">
@@ -104,6 +107,9 @@
       <Filter>Main\Model</Filter>
     </ClCompile>
     <ClCompile Include="Utils.cpp">
+      <Filter>Main\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Timer.cpp">
       <Filter>Main\Common</Filter>
     </ClCompile>
   </ItemGroup>

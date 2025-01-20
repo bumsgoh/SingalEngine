@@ -14,14 +14,15 @@ public:
 	Cube();
 	virtual bool Initialize(
 		ComPtr<ID3D12Device>& device,
-		ComPtr<ID3D12GraphicsCommandList>& cmdList) override;
+		ComPtr<ID3D12GraphicsCommandList>& cmdList,
+		UINT numberOfItems) override;
 
 	std::array<Vertex, 8> vertices =
 	{
-		Vertex({ XMFLOAT3(-1.0f, -1.0f, -1.0f) }),
-		Vertex({ XMFLOAT3(-1.0f, +1.0f, -1.0f) }),
-		Vertex({ XMFLOAT3(+1.0f, +1.0f, -1.0f) }),
-		Vertex({ XMFLOAT3(+1.0f, -1.0f, -1.0f) }),
+		Vertex({ XMFLOAT3(-1.0f, -1.0f, 0.0f) }),
+		Vertex({ XMFLOAT3(-1.0f, +1.0f, 0.0f) }),
+		Vertex({ XMFLOAT3(+1.0f, +1.0f, 0.0f) }),
+		Vertex({ XMFLOAT3(+1.0f, -1.0f, 0.0f) }),
 		Vertex({ XMFLOAT3(-1.0f, -1.0f, +1.0f) }),
 		Vertex({ XMFLOAT3(-1.0f, +1.0f, +1.0f) }),
 		Vertex({ XMFLOAT3(+1.0f, +1.0f, +1.0f) }),
