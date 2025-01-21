@@ -108,9 +108,8 @@ void Renderer::Render(Scene& scene, float DeltaTime)
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(m_rtvHeap->GetCPUDescriptorHandleForHeapStart(), m_currBackBufferIndex, m_rtvDescriptorSize);
     m_commandList->ClearRenderTargetView(rtvHandle, Colors::Black, 0, nullptr);
-    //m_commandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
-
-    m_commandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, nullptr);
+    m_commandList->ClearDepthStencilView(DepthStencilView(), D3D12_CLEAR_FLAG_DEPTH | D3D12_CLEAR_FLAG_STENCIL, 1.0f, 0, 0, nullptr);
+    m_commandList->OMSetRenderTargets(1, &CurrentBackBufferView(), true, &DepthStencilView());
     m_commandList->SetPipelineState(m_pso.Get());
     
     ID3D12DescriptorHeap* descriptorHeaps[] = { m_cbvHeap.Get() };
@@ -203,14 +202,13 @@ void Renderer::InitDSHeaps() {
     ThrowIfFailed(m_device->CreateDescriptorHeap(
         &rtvHeapDesc, IID_PPV_ARGS(m_rtvHeap.GetAddressOf())));
 
-    //Depth Stencil
-    /*D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
+    D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc;
     dsvHeapDesc.NumDescriptors = 1;
     dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
     dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
     dsvHeapDesc.NodeMask = 0;
     ThrowIfFailed(m_device->CreateDescriptorHeap(
-        &dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));*/
+        &dsvHeapDesc, IID_PPV_ARGS(m_dsvHeap.GetAddressOf())));
 }
 
 
@@ -307,7 +305,7 @@ void Renderer::DidResizeWindow()
         rtvHeapHandle.Offset(1, m_rtvDescriptorSize);
     }
 
-    /*D3D12_RESOURCE_DESC depthStencilDesc;
+    D3D12_RESOURCE_DESC depthStencilDesc;
     depthStencilDesc.Dimension = D3D12_RESOURCE_DIMENSION_TEXTURE2D;
     depthStencilDesc.Alignment = 0;
     depthStencilDesc.Width = m_screenWidth;
@@ -345,7 +343,7 @@ void Renderer::DidResizeWindow()
     // Transition the resource from its initial state to be used as a depth buffer.
     m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(m_depthStencilBuffer.Get(),
         D3D12_RESOURCE_STATE_COMMON, D3D12_RESOURCE_STATE_DEPTH_WRITE));
-        */
+        
         // Execute the resize commands.
     // Execute the resize commands.
     SetViewport();
@@ -461,15 +459,19 @@ void Renderer::BuildDefaultPSO()
         reinterpret_cast<BYTE*>(m_psByteCode->GetBufferPointer()),
         m_psByteCode->GetBufferSize()
     };
-    psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
+    CD3DX12_RASTERIZER_DESC rsDesc(D3D12_DEFAULT);
+    rsDesc.FillMode = D3D12_FILL_MODE_WIREFRAME;
+    rsDesc.CullMode = D3D12_CULL_MODE_BACK;
+
+    psoDesc.RasterizerState = rsDesc;
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
-    //psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
+    psoDesc.DepthStencilState = CD3DX12_DEPTH_STENCIL_DESC(D3D12_DEFAULT);
     psoDesc.SampleMask = UINT_MAX;
     psoDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
     psoDesc.NumRenderTargets = 1;
     psoDesc.RTVFormats[0] = m_backBufferFormat;
     psoDesc.SampleDesc.Count = 1; //TODO:: 분기 추후 적용
     psoDesc.SampleDesc.Quality = 0;
-    //psoDesc.DSVFormat = mDepthStencilFormat;
+    psoDesc.DSVFormat = m_depthStencilFormat;
     ThrowIfFailed(m_device->CreateGraphicsPipelineState(&psoDesc, IID_PPV_ARGS(&m_pso)));
 }

@@ -27,7 +27,7 @@ void Model::Render(const ComPtr<ID3D12GraphicsCommandList>& commandList)
 	UINT objCBByteSize = CalcConstantBufferByteSize(sizeof(ConstantBuffer));
 	commandList->IASetVertexBuffers(0, 1, &this->VertexBufferView());
 	commandList->IASetIndexBuffer(&this->IndexBufferView());
-	commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINESTRIP);
+	commandList->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 	D3D12_GPU_VIRTUAL_ADDRESS objCBAddress = this->CBuffer->Resource()->GetGPUVirtualAddress() + this->ConstantBufferIndex * objCBByteSize;
 
 	commandList->SetGraphicsRootConstantBufferView(0, objCBAddress);
