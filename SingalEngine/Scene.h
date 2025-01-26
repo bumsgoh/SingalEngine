@@ -6,10 +6,13 @@
 #include <wrl/client.h> 
 #include "UploadBuffer.h"
 #include <vector>
+#include "Camera.h"
 
 using Microsoft::WRL::ComPtr;
 class Model;
+class Camera;
 struct ConstantBuffer;
+
 class Scene
 {
 public:
@@ -18,7 +21,7 @@ public:
 	bool Initialize(ComPtr<ID3D12Device>& device, 
 					ComPtr<ID3D12GraphicsCommandList>& cmdList);
 	void Update(float DeltaTime);
-	void UpdateConstantBuffers(float DeltaTime);
+	void UpdateConstantBuffers(float DeltaTime, Camera camera);
 
 	float totalTime = 0.0f;
 	float screenAspect;

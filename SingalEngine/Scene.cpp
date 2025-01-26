@@ -54,7 +54,7 @@ void Scene::Update(float DeltaTime)
 	}
 }
 
-void Scene::UpdateConstantBuffers(float DeltaTime)
+void Scene::UpdateConstantBuffers(float DeltaTime, Camera camera)
 {
 	totalTime += DeltaTime;
 	XMFLOAT4X4 rotation;
@@ -63,8 +63,10 @@ void Scene::UpdateConstantBuffers(float DeltaTime)
 	m_currentResource->transform.Scale = Scale4x4(screenAspect, 1.0f, 1.0f, 0.1f);
 	m_currentResource->transform.Rotation = rotation;
 	ConstantBuffer constantBuffer;
+
+	XMMATRIX viewRow = XMLoadFloat4x4(&camera.GetViewRow());
 	XMMATRIX model = m_currentResource->transform.ModelMatrix();
 	
-	XMStoreFloat4x4(&constantBuffer.modelMatrix, XMMatrixTranspose(model));
+	XMStoreFloat4x4(&constantBuffer.modelMatrix, XMMatrixTranspose(XMMatrixMultiply(viewRow, model)));
 	currentConstantBuffer->CopyData(m_currentResource->ConstantBufferIndex, constantBuffer);
 }

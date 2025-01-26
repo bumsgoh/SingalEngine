@@ -3,16 +3,16 @@
 #include "Utils.h"
 #include <DirectXColors.h>
 #include "Model.h"
+
 Renderer::Renderer(int screenWidth,
                    int screenHeight)
 {
     this->m_screenWidth = screenWidth;
     this->m_screenHeight = screenHeight;
     this->m_scissorRect = { 0, 0, screenWidth, screenHeight };
-   
+    m_camera.SetAspectRatio(screenWidth / screenHeight);
     //m_dsvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_DSV);
 
-   
 }
 
 void Renderer::Initialize(Scene& scene)
@@ -90,7 +90,7 @@ void Renderer::Update(Scene& scene, float DeltaTime) {
         CloseHandle(eventHandle);
     }
 
-    scene.UpdateConstantBuffers(DeltaTime);
+    scene.UpdateConstantBuffers(DeltaTime, m_camera);
 }
 
 void Renderer::Render(Scene& scene, float DeltaTime)
@@ -159,6 +159,7 @@ void Renderer::SetViewport() {
 
     m_commandList->RSSetViewports(1, &m_screenViewport);
     m_commandList->RSSetScissorRects(1, &m_scissorRect);
+    m_camera.SetAspectRatio(GetScreenRatio());
 }
 
 float Renderer::GetScreenRatio() const {

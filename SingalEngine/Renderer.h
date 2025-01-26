@@ -10,6 +10,7 @@
 #include <memory>
 #include "ShaderCommon.h"
 #include "UploadBuffer.h"
+#include "Camera.h"
 #include <DirectXMath.h>
 
 using namespace Microsoft::WRL;
@@ -63,6 +64,9 @@ public:
 	std::vector<D3D12_INPUT_ELEMENT_DESC> m_inputLayout;
 
 	ComPtr<ID3D12PipelineState> m_pso = nullptr;
+
+
+	Camera m_camera;
 
 	Renderer(int screenWidth,
 			 int screenHeight);

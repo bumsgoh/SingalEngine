@@ -23,6 +23,9 @@
     <Filter Include="Main\Shaders">
       <UniqueIdentifier>{ad8edc8d-7013-428b-9140-b2f6960b6ce1}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Main\Camera">
+      <UniqueIdentifier>{9cbb180f-60c9-48e5-bb65-4eb8a2c0b184}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="framework.h">
@@ -73,6 +76,9 @@
     <ClInclude Include="Timer.h">
       <Filter>Main\Common</Filter>
     </ClInclude>
+    <ClInclude Include="Camera.h">
+      <Filter>Main\Camera</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ResourceCompile Include="SingalEngine.rc">
@@ -111,6 +117,9 @@
     </ClCompile>
     <ClCompile Include="Timer.cpp">
       <Filter>Main\Common</Filter>
+    </ClCompile>
+    <ClCompile Include="Camera.cpp">
+      <Filter>Main\Camera</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
